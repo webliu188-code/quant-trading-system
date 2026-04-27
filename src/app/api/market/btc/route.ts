@@ -6,7 +6,7 @@ export async function GET() {
   try {
     // 从 Binance 获取 BTC/USDT 实时价格
     const response = await fetch(
-      "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"
+      "https://api.binance.me/api/v3/ticker/24hr?symbol=BTCUSDT"
     );
     
     if (!response.ok) {

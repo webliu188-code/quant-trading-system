@@ -9,7 +9,7 @@ export async function GET() {
     for (const symbol of symbols) {
       try {
         const response = await fetch(
-          `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`
+          `https://api.binance.me/api/v3/ticker/24hr?symbol=${symbol}`
         );
         
         if (response.ok) {

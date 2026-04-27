@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   try {
     // 从 Binance 获取 K线数据
     const response = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+      `https://api.binance.me/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
     );
 
     if (response.ok) {
