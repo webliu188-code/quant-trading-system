@@ -50,7 +50,8 @@ export function Sidebar() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-purple-600">
               <Activity className="h-5 w-5 text-white" />
             </div>
-            <span className="font-semibold">量化系统</span>
+            <span className="font-semibold">量化交易监测系统</span>
+            <span className="text-xs text-muted-foreground">V1.0</span>
           </div>
         )}
         {collapsed && (
