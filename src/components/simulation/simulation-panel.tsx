@@ -33,6 +33,7 @@ interface Trade {
   action: '开仓' | '平仓';
   quantity: number;
   price: number;
+  entryPrice: number;
   time: string;
   status: 'open' | 'closed';
   pnl?: number;
@@ -140,43 +141,99 @@ function generateTrades(marketData: MarketItem[]): Trade[] {
     });
   }
   
-  // 生成最近10笔交易
-  for (let i = 0; i < 10; i++) {
+  // 生成最近5笔完整交易（开仓+平仓配对）
+  for (let i = 0; i < 5; i++) {
     const symbol = symbols[i % symbols.length];
     const basePrice = priceMap[symbol] || 1000;
-    const entryPrice = basePrice * (0.98 + Math.random() * 0.04);
-    const exitPrice = basePrice;
-    const isLong = i % 2 === 0;
-    const isClosed = i < 7; // 前7笔已平仓
-    const leverage = [3, 5, 2, 8, 4, 6][i % 6];
+    const leverage = [3, 5, 2, 8, 4][i % 5];
     const quantity = symbol === 'BTCUSDT' ? 0.5 : (symbol === 'ETHUSDT' ? 2 : (symbol === 'BNBUSDT' ? 10 : 100));
+    const isLong = i % 2 === 0;
+    const isProfit = i % 3 !== 2; // 3笔盈利，2笔亏损
     
-    // 基于真实价格计算盈亏
-    const pnlPercent = isLong 
-      ? ((exitPrice - entryPrice) / entryPrice) * leverage
-      : ((entryPrice - exitPrice) / entryPrice) * leverage;
+    // 计算开仓价和平仓价
+    const priceRange = basePrice * 0.02; // 2%价格范围
+    const entryPrice = isLong 
+      ? basePrice * (0.99 - Math.random() * 0.01)  // 做多在低价开仓
+      : basePrice * (1.01 + Math.random() * 0.01); // 做空在高价开仓
+    
+    const pnlPercent = isProfit 
+      ? (isLong ? leverage * 0.015 : leverage * 0.018)  // 盈利交易
+      : (isLong ? -leverage * 0.008 : -leverage * 0.01); // 亏损交易
+    
+    const exitPrice = isLong 
+      ? entryPrice * (1 + pnlPercent / leverage)
+      : entryPrice * (1 - pnlPercent / leverage);
     
     const pnl = (pnlPercent / 100) * entryPrice * quantity;
-    const fee = entryPrice * quantity * 0.0004;
+    const fee = (entryPrice + exitPrice) * quantity * 0.0004;
     const slippage = entryPrice * quantity * 0.0001;
+    const openTime = new Date(Date.now() - (i * 2 + 1) * 3600000);
     
+    // 开仓记录
     trades.push({
-      id: i + 1,
+      id: i * 2 + 1,
       symbol,
       type: isLong ? '做多' : '做空',
-      action: isClosed ? '平仓' : '开仓',
+      action: '开仓',
       quantity,
       price: entryPrice,
-      time: new Date(Date.now() - i * 3600000 * (1 + Math.random() * 2)).toLocaleString('zh-CN'),
-      status: isClosed ? 'closed' : 'open',
-      pnl: isClosed ? pnl : undefined,
-      pnlPercent: isClosed ? pnlPercent : undefined,
+      entryPrice,
+      time: openTime.toLocaleString('zh-CN'),
+      status: 'open',
+      strategy: strategies[i % strategies.length],
+      fee: entryPrice * quantity * 0.0004,
+      slippage,
+    });
+    
+    // 平仓记录（使用实际成交价）
+    trades.push({
+      id: i * 2 + 2,
+      symbol,
+      type: isLong ? '做多' : '做空',
+      action: '平仓',
+      quantity,
+      price: exitPrice,
+      entryPrice,
+      time: new Date(openTime.getTime() + 1800000 + Math.random() * 3600000).toLocaleString('zh-CN'),
+      status: 'closed',
+      pnl,
+      pnlPercent,
       strategy: strategies[i % strategies.length],
       fee,
       slippage,
-      exitReason: isClosed ? exitReasons[i % exitReasons.length] : undefined
+      exitReason: isProfit ? '止盈平仓' : '止损平仓'
     });
   }
+  
+  // 添加2笔当前持仓中的开仓记录
+  for (let i = 0; i < 2; i++) {
+    const symbol = symbols[(i + 3) % symbols.length];
+    const basePrice = priceMap[symbol] || 1000;
+    const leverage = [5, 8][i];
+    const quantity = symbol === 'BTCUSDT' ? 0.3 : (symbol === 'ETHUSDT' ? 1.5 : 50);
+    const isLong = i === 0;
+    const entryPrice = isLong 
+      ? basePrice * 0.995  // 略低于现价开多
+      : basePrice * 1.005; // 略高于现价开空
+    
+    trades.push({
+      id: 12 + i,
+      symbol,
+      type: isLong ? '做多' : '做空',
+      action: '开仓',
+      quantity,
+      price: entryPrice,
+      entryPrice,
+      time: new Date(Date.now() - (i + 1) * 1800000).toLocaleString('zh-CN'),
+      status: 'open',
+      strategy: strategies[(i + 4) % strategies.length],
+      fee: entryPrice * quantity * 0.0004,
+      slippage: entryPrice * quantity * 0.0001,
+    });
+  }
+  
+  // 按时间排序
+  trades.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   
   return trades;
 }
@@ -446,12 +503,13 @@ export default function SimulationPanel() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-slate-400 border-b border-slate-700">
+                  <tr className="text-slate-400 border-b border-slate-700 text-xs">
                     <th className="text-left py-2 px-2">时间</th>
                     <th className="text-left py-2 px-2">币种</th>
                     <th className="text-left py-2 px-2">方向</th>
                     <th className="text-left py-2 px-2">动作</th>
-                    <th className="text-right py-2 px-2">价格</th>
+                    <th className="text-right py-2 px-2">开仓价</th>
+                    <th className="text-right py-2 px-2">平仓价</th>
                     <th className="text-right py-2 px-2">数量</th>
                     <th className="text-left py-2 px-2">策略</th>
                     <th className="text-right py-2 px-2">手续费</th>
@@ -460,8 +518,8 @@ export default function SimulationPanel() {
                 </thead>
                 <tbody>
                   {trades.slice(0, 8).map((trade) => (
-                    <tr key={trade.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                      <td className="py-2 px-2 text-xs text-slate-400">{trade.time}</td>
+                    <tr key={trade.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 text-xs">
+                      <td className="py-2 px-2 text-slate-400">{trade.time}</td>
                       <td className="py-2 px-2 font-medium">{trade.symbol.replace('USDT', '')}</td>
                       <td className="py-2 px-2">
                         <span className={`px-2 py-0.5 rounded text-xs ${
@@ -477,10 +535,19 @@ export default function SimulationPanel() {
                           {trade.action}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-right">${trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="py-2 px-2 text-right text-emerald-400">
+                        ${(trade.entryPrice || trade.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-2 px-2 text-right text-orange-400">
+                        {trade.action === '平仓' ? (
+                          <>${trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                        ) : (
+                          <span className="text-slate-500">—</span>
+                        )}
+                      </td>
                       <td className="py-2 px-2 text-right">{trade.quantity}</td>
-                      <td className="py-2 px-2 text-xs text-slate-400">{trade.strategy}</td>
-                      <td className="py-2 px-2 text-right text-xs text-slate-400">${trade.fee.toFixed(4)}</td>
+                      <td className="py-2 px-2 text-slate-400">{trade.strategy}</td>
+                      <td className="py-2 px-2 text-right text-slate-400">${trade.fee.toFixed(4)}</td>
                       <td className={`py-2 px-2 text-right font-bold ${
                         trade.status === 'closed' 
                           ? ((trade.pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400')
