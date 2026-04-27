@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { AppLayout } from '@/components/layout/app-layout';
-import { SignalsMonitor } from '@/components/signals/signals-monitor';
+import SignalsMonitor from '@/components/signals/signals-monitor';
 
 export const metadata: Metadata = {
   title: '信号监控',
