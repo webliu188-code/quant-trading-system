@@ -63,12 +63,20 @@ async function fetchMarketData(): Promise<MarketItem[] | null> {
 
 function generatePositions(marketData: MarketItem[]): Position[] {
   const positions: Position[] = [];
-  const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'];
-  
   const priceMap: Record<string, number> = {};
+  // 将API返回的短符号映射到完整符号
+  const symbolMap: Record<string, string> = {
+    'BTC': 'BTCUSDT',
+    'ETH': 'ETHUSDT',
+    'BNB': 'BNBUSDT',
+    'SOL': 'SOLUSDT',
+    'XRP': 'XRPUSDT',
+    'ADA': 'ADAUSDT',
+  };
   if (marketData) {
     marketData.forEach((item: MarketItem) => {
-      priceMap[item.symbol] = item.price;
+      const fullSymbol = symbolMap[item.symbol] || item.symbol + 'USDT';
+      priceMap[fullSymbol] = item.price;
     });
   }
   
@@ -135,9 +143,19 @@ function generateTrades(marketData: MarketItem[]): Trade[] {
   const exitReasons = ['止盈平仓', '止损平仓', '手动平仓', '到期平仓', 'HMM体制切换'];
   
   const priceMap: Record<string, number> = {};
+  // 将API返回的短符号映射到完整符号
+  const symbolMap: Record<string, string> = {
+    'BTC': 'BTCUSDT',
+    'ETH': 'ETHUSDT',
+    'BNB': 'BNBUSDT',
+    'SOL': 'SOLUSDT',
+    'XRP': 'XRPUSDT',
+    'ADA': 'ADAUSDT',
+  };
   if (marketData) {
     marketData.forEach((item: MarketItem) => {
-      priceMap[item.symbol] = item.price;
+      const fullSymbol = symbolMap[item.symbol] || item.symbol + 'USDT';
+      priceMap[fullSymbol] = item.price;
     });
   }
   
