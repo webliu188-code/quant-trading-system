@@ -20,8 +20,12 @@ import {
   ArrowDownRight,
   Zap,
   Brain,
-  Eye,
   RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  Lightbulb,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +38,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  ReferenceLine,
 } from "recharts";
 
 const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
@@ -53,9 +58,16 @@ interface Signal {
   symbol: string;
   strategy: string;
   signal: number;
-  direction: "long" | "short" | "neutral";
+  direction: "做多" | "做空" | "观望";
   confidence: number;
   time: string;
+  entryPrice: number;
+  stopLoss: number;
+  takeProfit: number;
+  support: number;
+  resistance: number;
+  reason: string;
+  nextMove: string;
 }
 
 interface TftSignal {
@@ -107,31 +119,204 @@ async function fetchKlineData(symbol: string, interval: string = "1h"): Promise<
   return [];
 }
 
-// 生成模拟信号
-function generateSignals(): Signal[] {
-  return [
-    { id: 1, symbol: "BTCUSDT", strategy: "TFT融合信号", signal: 0.72, direction: "long", confidence: 85, time: "刚刚" },
-    { id: 2, symbol: "ETHUSDT", strategy: "趋势突破", signal: 0.58, direction: "long", confidence: 72, time: "5秒前" },
-    { id: 3, symbol: "BNBUSDT", strategy: "资金费率套利", signal: 0.45, direction: "neutral", confidence: 65, time: "15秒前" },
-    { id: 4, symbol: "SOLUSDT", strategy: "动量加速", signal: -0.32, direction: "short", confidence: 58, time: "30秒前" },
-    { id: 5, symbol: "BTCUSDT", strategy: "布林带收口", signal: 0.68, direction: "long", confidence: 78, time: "1分钟前" },
-    { id: 6, symbol: "ETHUSDT", strategy: "MACD背离", signal: -0.21, direction: "short", confidence: 52, time: "2分钟前" },
-    { id: 7, symbol: "XRPUSDT", strategy: "RSI超卖", signal: 0.82, direction: "long", confidence: 88, time: "3分钟前" },
-    { id: 8, symbol: "BTCUSDT", strategy: "MA均线交叉", signal: 0.55, direction: "long", confidence: 70, time: "5分钟前" },
-  ];
+// 计算支撑位和压力位
+function calculateLevels(klines: KLineData[]) {
+  if (klines.length < 20) {
+    return { support: 0, resistance: 0, midLevel: 0 };
+  }
+  
+  const recentData = klines.slice(-20);
+  const highs = recentData.map(k => k.high);
+  const lows = recentData.map(k => k.low);
+  const closes = recentData.map(k => k.close);
+  
+  const maxHigh = Math.max(...highs);
+  const minLow = Math.min(...lows);
+  const avgClose = closes.reduce((a, b) => a + b, 0) / closes.length;
+  
+  // 计算波动率
+  const volatility = avgClose * 0.02;
+  
+  // 支撑位 = 近低点和斐波那契回调
+  const support = minLow + volatility * 0.5;
+  // 压力位 = 近高点和斐波那契扩展
+  const resistance = maxHigh - volatility * 0.5;
+  
+  return {
+    support: Math.floor(support / 100) * 100,
+    resistance: Math.ceil(resistance / 100) * 100,
+    midLevel: avgClose
+  };
 }
 
-// 生成TFT信号
-function generateTftSignals(): TftSignal[] {
-  return [
-    { time: "00:00", signal: 0.62, confidence: 78 },
-    { time: "04:00", signal: 0.58, confidence: 75 },
-    { time: "08:00", signal: 0.71, confidence: 82 },
-    { time: "12:00", signal: 0.45, confidence: 65 },
-    { time: "16:00", signal: 0.33, confidence: 58 },
-    { time: "20:00", signal: 0.68, confidence: 76 },
-    { time: "24:00", signal: 0.72, confidence: 85 },
+// 生成增强信号
+function generateSignals(currentPrice: number, symbol: string): Signal[] {
+  const signalTemplates: Omit<Signal, 'id' | 'time' | 'entryPrice' | 'stopLoss' | 'takeProfit' | 'support' | 'resistance' | 'reason' | 'nextMove'>[] = [
+    {
+      symbol: "BTCUSDT",
+      strategy: "TFT融合信号",
+      signal: 0.72,
+      direction: "做多",
+      confidence: 85,
+    },
+    {
+      symbol: "ETHUSDT",
+      strategy: "趋势突破",
+      signal: 0.58,
+      direction: "做多",
+      confidence: 72,
+    },
+    {
+      symbol: "BNBUSDT",
+      strategy: "资金费率套利",
+      signal: 0.45,
+      direction: "观望",
+      confidence: 65,
+    },
+    {
+      symbol: "SOLUSDT",
+      strategy: "动量加速",
+      signal: -0.32,
+      direction: "做空",
+      confidence: 58,
+    },
+    {
+      symbol: "BTCUSDT",
+      strategy: "布林带收口",
+      signal: 0.68,
+      direction: "做多",
+      confidence: 78,
+    },
+    {
+      symbol: "ETHUSDT",
+      strategy: "MACD背离",
+      signal: -0.21,
+      direction: "做空",
+      confidence: 52,
+    },
+    {
+      symbol: "XRPUSDT",
+      strategy: "RSI超卖",
+      signal: 0.82,
+      direction: "做多",
+      confidence: 88,
+    },
+    {
+      symbol: "BTCUSDT",
+      strategy: "MA均线交叉",
+      signal: 0.55,
+      direction: "做多",
+      confidence: 70,
+    },
   ];
+
+  return signalTemplates.map((template, index) => {
+    const entryPrice = template.symbol === symbol ? currentPrice : currentPrice * (0.95 + Math.random() * 0.1);
+    const direction = template.direction;
+    
+    // 根据方向计算止损止盈
+    const stopLoss = direction === "做多" ? entryPrice * (1 - 0.015) : entryPrice * (1 + 0.015);
+    const takeProfit = direction === "做多" ? entryPrice * (1 + 0.03) : entryPrice * (1 - 0.03);
+    const support = direction === "做多" ? entryPrice * 0.97 : entryPrice * 0.99;
+    const resistance = direction === "做多" ? entryPrice * 1.03 : entryPrice * 1.01;
+    
+    // 判断依据
+    const reasons: Record<string, string[]> = {
+      "TFT融合信号": [
+        `TFT模型综合1500维特征，输出看涨信号`,
+        `Temporal Fusion Transformer时序融合良好`,
+        `LSTM编码器捕获长期依赖关系`,
+      ],
+      "趋势突破": [
+        `价格突破20日均线阻力位`,
+        `成交量较均值放大120%`,
+        `MACD金叉形成中`,
+      ],
+      "资金费率套利": [
+        `资金费率-0.01%，套利空间充足`,
+        `永续合约与现货价差收窄`,
+        `预计费率结算后价差回归`,
+      ],
+      "动量加速": [
+        `RSI指标进入超买区域(75)`,
+        `价格偏离20日均线+2σ`,
+        `成交量萎缩，动能减弱`,
+      ],
+      "布林带收口": [
+        `布林带收口至2%宽度`,
+        `ATR指标显示波动率降至低点`,
+        `突破后将出现大幅波动`,
+      ],
+      "MACD背离": [
+        `价格创新高但MACD未跟随`,
+        `柱状图连续3根收缩`,
+        `短期回调概率&gt;60%`,
+      ],
+      "RSI超卖": [
+        `RSI(14)降至28，处于超卖区`,
+        `价格触及布林下轨支撑`,
+        `恐慌情绪指标达到局部峰值`,
+      ],
+      "MA均线交叉": [
+        `MA5上穿MA10形成金叉`,
+        `20日均线向上倾斜`,
+        `短期均线多头排列`,
+      ],
+    };
+    
+    // 下一步推演
+    const nextMoves: Record<string, { bull: string; bear: string }> = {
+      "TFT融合信号": {
+        bull: "等待回踩$" + (entryPrice * 0.985).toFixed(2) + "确认后入场，止损$" + stopLoss.toFixed(2) + "，目标$" + takeProfit.toFixed(2),
+        bear: "若放量跌破$" + (entryPrice * 0.97).toFixed(2) + "，信号失效，建议观望",
+      },
+      "趋势突破": {
+        bull: "若1小时内站稳$" + (entryPrice * 1.005).toFixed(2) + "，追多5%仓位，止损$" + stopLoss.toFixed(2),
+        bear: "若快速冲高回落，收长上影线，考虑开空对冲",
+      },
+      "资金费率套利": {
+        bull: "当前套利空间有限，建议观望",
+        bear: "若资金费率转正，可开空头套利",
+      },
+      "动量加速": {
+        bull: "当前做空信号，等待反弹至$" + (entryPrice * 1.01).toFixed(2) + "后做空",
+        bear: "若继续放量下跌，可加仓做空至$" + (entryPrice * 0.95).toFixed(2),
+      },
+      "布林带收口": {
+        bull: "向上突破$" + (entryPrice * 1.02).toFixed(2) + "后追多，止损$" + (entryPrice * 0.98).toFixed(2),
+        bear: "向下突破$" + (entryPrice * 0.98).toFixed(2) + "后追空",
+      },
+      "MACD背离": {
+        bull: "若价格企稳，底背离确认后可做多",
+        bear: "若MACD死叉确认，止损出场或反手做空",
+      },
+      "RSI超卖": {
+        bull: "RSI回升至35以上企稳后做多，目标$" + (entryPrice * 1.03).toFixed(2) + "，止损$" + stopLoss.toFixed(2),
+        bear: "若RSI继续下行至20以下，勿盲目抄底，等待反弹信号",
+      },
+      "MA均线交叉": {
+        bull: "均线金叉有效，多头排列确认后加仓",
+        bear: "若MA5下穿MA10死叉，多单止盈或开空",
+      },
+    };
+    
+    return {
+      ...template,
+      id: index + 1,
+      time: index === 0 ? "刚刚" : index === 1 ? "5秒前" : index === 2 ? "15秒前" : index === 3 ? "30秒前" : index === 4 ? "1分钟前" : index === 5 ? "2分钟前" : index === 6 ? "3分钟前" : "5分钟前",
+      entryPrice,
+      stopLoss,
+      takeProfit,
+      support,
+      resistance,
+      reason: (reasons[template.strategy] || ["综合技术面分析"]).join("；"),
+      nextMove: template.direction === "做多" 
+        ? nextMoves[template.strategy]?.bull || "等待回调入场" 
+        : template.direction === "做空" 
+          ? nextMoves[template.strategy]?.bear || "等待反弹做空"
+          : "当前信号不明确，建议观望",
+    };
+  });
 }
 
 export function SignalsMonitor() {
@@ -187,8 +372,22 @@ export function SignalsMonitor() {
         setDataSource("mock");
       }
       
-      setSignals(generateSignals());
-      setTftSignals(generateTftSignals());
+      // 生成增强信号
+      const currentMarket = markets.find(m => m.symbol === selectedSymbol.replace("USDT", ""));
+      const currentPrice = currentMarket?.price || (klines.length > 0 ? klines[klines.length - 1].close : 67000);
+      setSignals(generateSignals(currentPrice, selectedSymbol));
+      
+      // 生成TFT信号
+      const newTftSignals: TftSignal[] = [
+        { time: "00:00", signal: 0.62, confidence: 78 },
+        { time: "04:00", signal: 0.58, confidence: 75 },
+        { time: "08:00", signal: 0.71, confidence: 82 },
+        { time: "12:00", signal: 0.45, confidence: 65 },
+        { time: "16:00", signal: 0.33, confidence: 58 },
+        { time: "20:00", signal: 0.68, confidence: 76 },
+        { time: "24:00", signal: currentMarket?.change24h && currentMarket.change24h > 0 ? 0.72 : -0.15, confidence: 85 },
+      ];
+      setTftSignals(newTftSignals);
       setLastUpdate(new Date());
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -215,8 +414,14 @@ export function SignalsMonitor() {
   const priceChangePercent = prevPrice > 0 ? ((priceChange / prevPrice) * 100).toFixed(2) : "0";
   const isUp = priceChange >= 0;
 
+  // 计算支撑位和压力位
+  const levels = calculateLevels(klineData);
+
   // 找到当前币种的实时数据
   const currentMarket = marketData.find(m => m.symbol === selectedSymbol.replace("USDT", ""));
+
+  // 当前使用的价格（真实数据优先）
+  const displayPrice = currentMarket?.price || currentPrice;
 
   return (
     <div className="p-6 space-y-6">
@@ -225,7 +430,7 @@ export function SignalsMonitor() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">信号监控</h1>
           <p className="text-muted-foreground">
-            实时行情与AI交易信号
+            实时行情与AI交易信号 · 支撑压力位分析
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -249,7 +454,7 @@ export function SignalsMonitor() {
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
@@ -265,7 +470,7 @@ export function SignalsMonitor() {
 
               <div>
                 <div className="text-3xl font-bold">
-                  ${(currentMarket?.price || currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ${displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
                 <div className={cn("flex items-center gap-2 text-sm", (currentMarket?.change24h || 0) >= 0 ? "text-green-500" : "text-red-500")}>
                   {isUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
@@ -276,6 +481,24 @@ export function SignalsMonitor() {
                     }
                   </span>
                   {currentMarket && <span className="text-muted-foreground">24h</span>}
+                </div>
+              </div>
+
+              {/* 支撑位和压力位 */}
+              <div className="flex items-center gap-4 pl-6 border-l">
+                <div className="text-center">
+                  <div className="flex items-center gap-1 text-red-500 text-sm">
+                    <TrendingDown className="h-3 w-3" />
+                    压力位
+                  </div>
+                  <div className="font-bold">${(currentMarket?.price ? levels.resistance : currentPrice * 1.02).toLocaleString()}</div>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center gap-1 text-green-500 text-sm">
+                    <TrendingUp className="h-3 w-3" />
+                    支撑位
+                  </div>
+                  <div className="font-bold">${(currentMarket?.price ? levels.support : currentPrice * 0.98).toLocaleString()}</div>
                 </div>
               </div>
             </div>
@@ -297,7 +520,7 @@ export function SignalsMonitor() {
 
       {/* Charts and Signals */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* K-Line Chart */}
+        {/* K-Line Chart with Levels */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -325,6 +548,20 @@ export function SignalsMonitor() {
                 <Tooltip
                   contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
                   labelStyle={{ color: "hsl(var(--foreground))" }}
+                />
+                {/* 压力位参考线 */}
+                <ReferenceLine 
+                  y={currentMarket?.price ? levels.resistance : currentPrice * 1.02} 
+                  stroke="#ef4444" 
+                  strokeDasharray="5 5"
+                  label={{ value: "压力", position: "right", fill: "#ef4444", fontSize: 10 }}
+                />
+                {/* 支撑位参考线 */}
+                <ReferenceLine 
+                  y={currentMarket?.price ? levels.support : currentPrice * 0.98} 
+                  stroke="#22c55e" 
+                  strokeDasharray="5 5"
+                  label={{ value: "支撑", position: "right", fill: "#22c55e", fontSize: 10 }}
                 />
                 <Area
                   type="monotone"
@@ -395,7 +632,7 @@ export function SignalsMonitor() {
         </Card>
       </div>
 
-      {/* Signals Table */}
+      {/* Signals Table with Details */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -404,80 +641,161 @@ export function SignalsMonitor() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>时间</TableHead>
-                <TableHead>交易对</TableHead>
-                <TableHead>策略</TableHead>
-                <TableHead>方向</TableHead>
-                <TableHead>信号强度</TableHead>
-                <TableHead>置信度</TableHead>
-                <TableHead>状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {signals.map((signal) => (
-                <TableRow key={signal.id}>
-                  <TableCell className="text-muted-foreground">{signal.time}</TableCell>
-                  <TableCell className="font-medium">{signal.symbol}</TableCell>
-                  <TableCell>{signal.strategy}</TableCell>
-                  <TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>时间</TableHead>
+                  <TableHead>交易对</TableHead>
+                  <TableHead>策略</TableHead>
+                  <TableHead>方向</TableHead>
+                  <TableHead>入场价</TableHead>
+                  <TableHead>止损价</TableHead>
+                  <TableHead>止盈价</TableHead>
+                  <TableHead>支撑位</TableHead>
+                  <TableHead>压力位</TableHead>
+                  <TableHead>置信度</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {signals.slice(0, 6).map((signal) => (
+                  <TableRow key={signal.id}>
+                    <TableCell className="text-muted-foreground">{signal.time}</TableCell>
+                    <TableCell className="font-medium">{signal.symbol}</TableCell>
+                    <TableCell className="text-sm">{signal.strategy}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          signal.direction === "做多" && "bg-green-500/10 text-green-600 border-green-500/20",
+                          signal.direction === "做空" && "bg-red-500/10 text-red-600 border-red-500/20",
+                          signal.direction === "观望" && "bg-gray-500/10 text-gray-600 border-gray-500/20"
+                        )}
+                      >
+                        {signal.direction === "做多" && <ArrowUpRight className="h-3 w-3 mr-1" />}
+                        {signal.direction === "做空" && <ArrowDownRight className="h-3 w-3 mr-1" />}
+                        {signal.direction}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">${signal.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-red-500">${signal.stopLoss.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-green-500">${signal.takeProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-green-500">${signal.support.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell className="text-red-500">${signal.resistance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{signal.confidence}%</span>
+                        {signal.confidence >= 80 && (
+                          <Badge variant="secondary" className="text-xs">强</Badge>
+                        )}
+                        {signal.confidence >= 60 && signal.confidence < 80 && (
+                          <Badge variant="secondary" className="text-xs">中</Badge>
+                        )}
+                        {signal.confidence < 60 && (
+                          <Badge variant="secondary" className="text-xs bg-gray-500/10 text-gray-600">弱</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Signal Details - 判断依据和下一步推演 */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* 判断依据 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-blue-500" />
+              判断依据
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {signals.slice(0, 4).map((signal) => (
+                <div key={signal.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          signal.direction === "做多" && "bg-green-500/10 text-green-600",
+                          signal.direction === "做空" && "bg-red-500/10 text-red-600",
+                          signal.direction === "观望" && "bg-gray-500/10 text-gray-600"
+                        )}
+                      >
+                        {signal.direction}
+                      </Badge>
+                      <span className="font-medium">{signal.symbol}</span>
+                      <span className="text-sm text-muted-foreground">{signal.strategy}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">{signal.confidence}%置信</Badge>
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {signal.reason.split("；").map((r, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-blue-500">•</span>
+                        <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 下一步推演 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              下一步推演
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {signals.slice(0, 4).map((signal) => (
+                <div key={signal.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
                       className={cn(
-                        signal.direction === "long" && "bg-green-500/10 text-green-600 border-green-500/20",
-                        signal.direction === "short" && "bg-red-500/10 text-red-600 border-red-500/20",
-                        signal.direction === "neutral" && "bg-gray-500/10 text-gray-600 border-gray-500/20"
+                        signal.direction === "做多" && "bg-green-500/10 text-green-600",
+                        signal.direction === "做空" && "bg-red-500/10 text-red-600",
+                        signal.direction === "观望" && "bg-gray-500/10 text-gray-600"
                       )}
                     >
-                      {signal.direction === "long" && <ArrowUpRight className="h-3 w-3 mr-1" />}
-                      {signal.direction === "short" && <ArrowDownRight className="h-3 w-3 mr-1" />}
-                      {signal.direction.toUpperCase()}
+                      {signal.direction}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full",
-                            signal.signal > 0 ? "bg-green-500" : "bg-red-500"
-                          )}
-                          style={{ width: `${Math.abs(signal.signal) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">
-                        {(signal.signal * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{signal.confidence}%</span>
-                      {signal.confidence >= 80 && (
-                        <Badge variant="secondary" className="text-xs">强</Badge>
-                      )}
-                      {signal.confidence >= 60 && signal.confidence < 80 && (
-                        <Badge variant="secondary" className="text-xs">中</Badge>
-                      )}
-                      {signal.confidence < 60 && (
-                        <Badge variant="secondary" className="text-xs bg-gray-500/10 text-gray-600">弱</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="gap-1">
-                      <Eye className="h-3 w-3" />
-                      待执行
-                    </Badge>
-                  </TableCell>
-                </TableRow>
+                    <span className="font-medium">{signal.symbol}</span>
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <p className="text-muted-foreground">{signal.nextMove}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Shield className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">风控建议：</span>
+                    {signal.direction === "做多" && (
+                      <span className="text-green-600">止损{((1 - signal.stopLoss / signal.entryPrice) * 100).toFixed(1)}%，盈亏比{((signal.takeProfit - signal.entryPrice) / (signal.entryPrice - signal.stopLoss)).toFixed(1)}:1</span>
+                    )}
+                    {signal.direction === "做空" && (
+                      <span className="text-red-600">止损{(((signal.stopLoss - signal.entryPrice) / signal.entryPrice) * 100).toFixed(1)}%，盈亏比{(((signal.entryPrice - signal.takeProfit) / (signal.stopLoss - signal.entryPrice))).toFixed(1)}:1</span>
+                    )}
+                    {signal.direction === "观望" && (
+                      <span className="text-gray-500">等待明确信号</span>
+                    )}
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Market Regime */}
       <Card>

@@ -63,12 +63,116 @@ const positions = [
 ];
 
 const trades = [
-  { id: 1, symbol: "BTCUSDT", type: "开多", quantity: 0.5, price: 64500, time: "10:30:15", status: "open" },
-  { id: 2, symbol: "ETHUSDT", type: "开多", quantity: 2, price: 3450, time: "10:25:42", status: "open" },
-  { id: 3, symbol: "BNBUSDT", type: "开空", quantity: 10, price: 580, time: "10:18:33", status: "open" },
-  { id: 4, symbol: "XRPUSDT", type: "平多", quantity: 100, price: 0.52, time: "09:45:20", status: "closed", pnl: 25 },
-  { id: 5, symbol: "SOLUSDT", type: "开多", quantity: 50, price: 145, time: "09:30:00", status: "open" },
-  { id: 6, symbol: "ADAUSDT", type: "平空", quantity: 500, price: 0.45, time: "09:15:45", status: "closed", pnl: -15 },
+  { 
+    id: 1, 
+    symbol: "BTCUSDT", 
+    type: "做多", 
+    action: "开仓",
+    quantity: 0.5, 
+    price: 64500, 
+    time: "2026-04-27 10:30:15", 
+    status: "open",
+    strategy: "趋势跟踪-TFT融合",
+    fee: 16.13,
+    slippage: 0.02
+  },
+  { 
+    id: 2, 
+    symbol: "ETHUSDT", 
+    type: "做多", 
+    action: "开仓",
+    quantity: 2, 
+    price: 3450, 
+    time: "2026-04-27 10:25:42", 
+    status: "open",
+    strategy: "动量策略-RSI背离",
+    fee: 6.90,
+    slippage: 0.01
+  },
+  { 
+    id: 3, 
+    symbol: "BNBUSDT", 
+    type: "做空", 
+    action: "开仓",
+    quantity: 10, 
+    price: 580, 
+    time: "2026-04-27 10:18:33", 
+    status: "open",
+    strategy: "资金费率套利",
+    fee: 5.80,
+    slippage: 0.01
+  },
+  { 
+    id: 4, 
+    symbol: "XRPUSDT", 
+    type: "做多", 
+    action: "平仓",
+    quantity: 100, 
+    price: 0.52, 
+    time: "2026-04-27 09:45:20", 
+    status: "closed", 
+    pnl: 25,
+    strategy: "波动率策略",
+    fee: 0.26,
+    slippage: 0.001,
+    exitReason: "止盈"
+  },
+  { 
+    id: 5, 
+    symbol: "SOLUSDT", 
+    type: "做多", 
+    action: "开仓",
+    quantity: 50, 
+    price: 145, 
+    time: "2026-04-27 09:30:00", 
+    status: "open",
+    strategy: "高杠杆波动率",
+    fee: 36.25,
+    slippage: 0.05
+  },
+  { 
+    id: 6, 
+    symbol: "ADAUSDT", 
+    type: "做空", 
+    action: "平仓",
+    quantity: 500, 
+    price: 0.45, 
+    time: "2026-04-27 09:15:45", 
+    status: "closed", 
+    pnl: -15,
+    strategy: "均值回归",
+    fee: 1.13,
+    slippage: 0.002,
+    exitReason: "止损"
+  },
+  { 
+    id: 7, 
+    symbol: "BTCUSDT", 
+    type: "做空", 
+    action: "平仓",
+    quantity: 0.3, 
+    price: 66200, 
+    time: "2026-04-26 22:15:33", 
+    status: "closed", 
+    pnl: 510,
+    strategy: "趋势跟踪-TFT融合",
+    fee: 9.93,
+    slippage: 0.03,
+    exitReason: "止盈"
+  },
+  { 
+    id: 8, 
+    symbol: "DOGEUSDT", 
+    type: "做多", 
+    action: "开仓",
+    quantity: 5000, 
+    price: 0.125, 
+    time: "2026-04-26 18:45:12", 
+    status: "open",
+    strategy: "社交情绪-LunarCrush",
+    fee: 3.13,
+    slippage: 0.001
+  },
 ];
 
 const grayscaleProgress = [
@@ -390,35 +494,50 @@ export function SimulationPanel() {
                   <TableRow>
                     <TableHead>时间</TableHead>
                     <TableHead>交易对</TableHead>
-                    <TableHead>类型</TableHead>
+                    <TableHead>方向</TableHead>
+                    <TableHead>动作</TableHead>
+                    <TableHead>策略</TableHead>
                     <TableHead>数量</TableHead>
                     <TableHead>价格</TableHead>
+                    <TableHead>手续费</TableHead>
+                    <TableHead>滑点</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>盈亏</TableHead>
+                    <TableHead>说明</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {trades.map((trade) => (
                     <TableRow key={trade.id}>
-                      <TableCell className="text-muted-foreground">{trade.time}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{trade.time}</TableCell>
                       <TableCell className="font-medium">{trade.symbol}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
                           className={
-                            trade.type.includes("开多") ? "bg-green-500/10 text-green-600" :
-                            trade.type.includes("开空") ? "bg-red-500/10 text-red-600" :
-                            trade.type.includes("平多") ? "bg-blue-500/10 text-blue-600" :
-                            "bg-purple-500/10 text-purple-600"
+                            trade.type === "做多" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
                           }
                         >
+                          {trade.type === "做多" ? <ArrowUpRight className="h-3 w-3 mr-1" /> : <ArrowDownRight className="h-3 w-3 mr-1" />}
                           {trade.type}
                         </Badge>
                       </TableCell>
-                      <TableCell>{trade.quantity}</TableCell>
-                      <TableCell>${trade.price}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
+                        <Badge variant="outline" className={
+                          trade.action === "开仓" ? "bg-blue-500/10 text-blue-600" : "bg-orange-500/10 text-orange-600"
+                        }>
+                          {trade.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={trade.strategy}>
+                        {trade.strategy}
+                      </TableCell>
+                      <TableCell>{trade.quantity}</TableCell>
+                      <TableCell>${trade.price.toLocaleString()}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{trade.fee.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{trade.slippage}</TableCell>
+                      <TableCell>
+                        <Badge variant={trade.status === "open" ? "default" : "secondary"}>
                           {trade.status === "open" ? "持仓中" : "已平仓"}
                         </Badge>
                       </TableCell>
@@ -427,6 +546,15 @@ export function SimulationPanel() {
                           <span className={trade.pnl >= 0 ? "text-green-600" : "text-red-600"}>
                             {trade.pnl >= 0 ? "+" : ""}{trade.pnl.toFixed(2)}
                           </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {trade.exitReason && (
+                          <Badge variant="outline" className={
+                            trade.exitReason === "止盈" ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
+                          }>
+                            {trade.exitReason}
+                          </Badge>
                         )}
                       </TableCell>
                     </TableRow>

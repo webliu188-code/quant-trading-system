@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-const BINANCE_WS_URL = "wss://stream.binance.com:9443/ws";
-
 export async function GET() {
   try {
     // 从 Binance 获取 BTC/USDT 实时价格
@@ -26,7 +24,7 @@ export async function GET() {
       fundingRate: null, // 需要通过 WebSocket 获取
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch {
     // 如果 API 失败，返回模拟数据作为后备
     return NextResponse.json({
       symbol: "BTCUSDT",
