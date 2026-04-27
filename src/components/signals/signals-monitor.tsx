@@ -16,6 +16,19 @@ import {
 const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
 const intervals = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
+// 价格格式化函数
+function formatPrice(price: number): string {
+  if (price >= 10000) {
+    return price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  } else if (price >= 100) {
+    return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else if (price >= 1) {
+    return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  } else {
+    return price.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+  }
+}
+
 interface KLineData {
   time: string;
   date: string;
@@ -750,22 +763,22 @@ export default function SignalsMonitor() {
 
           {/* 短线、中线、长线操作建议 */}
           {signal && (
-            <div className="bg-slate-800 rounded-xl p-4">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Target className="text-purple-400 w-5 h-5" />
+            <div className="bg-slate-800 rounded-xl p-3 md:p-4">
+              <h3 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">
+                <Target className="text-purple-400 w-4 h-4 md:w-5 md:h-5" />
                 多周期操作建议
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-3">
                 {/* 短线 */}
-                <div className="bg-gradient-to-br from-orange-900/30 to-orange-800/10 border border-orange-500/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Timer className="text-orange-400 w-5 h-5" />
-                    <span className="font-bold text-orange-400">日内短线</span>
+                <div className="bg-gradient-to-br from-orange-900/30 to-orange-800/10 border border-orange-500/30 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Timer className="text-orange-400 w-4 h-4" />
+                    <span className="font-bold text-orange-400 text-sm md:text-base">日内短线</span>
                     <span className="text-xs text-slate-400 ml-auto">{signal.shortTerm.timeframe}</span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">操作:</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">操作:</span>
                       <span className={`font-bold ${
                         signal.shortTerm.action.includes("做多") ? "text-emerald-400" : 
                         signal.shortTerm.action.includes("做空") ? "text-red-400" : "text-yellow-400"
@@ -773,31 +786,35 @@ export default function SignalsMonitor() {
                         {signal.shortTerm.action}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">建议入场:</span>
-                      <span className="text-white">${signal.shortTerm.entry.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">盈亏比:</span>
+                      <span className="text-purple-400">{signal.shortTerm.riskReward}:1</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">止损:</span>
-                      <span className="text-red-400">${signal.shortTerm.stop.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between col-span-2 mt-1">
+                      <span className="text-slate-400">建议入场:</span>
+                      <span className="text-white font-mono text-xs">${formatPrice(signal.shortTerm.entry)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">目标:</span>
-                      <span className="text-emerald-400">${signal.shortTerm.target.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">止损:</span>
+                      <span className="text-red-400 font-mono text-xs">${formatPrice(signal.shortTerm.stop)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">目标:</span>
+                      <span className="text-emerald-400 font-mono text-xs">${formatPrice(signal.shortTerm.target)}</span>
                     </div>
                   </div>
                 </div>
                 
                 {/* 中线 */}
-                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/10 border border-blue-500/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="text-blue-400 w-5 h-5" />
-                    <span className="font-bold text-blue-400">日内中线</span>
+                <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/10 border border-blue-500/30 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="text-blue-400 w-4 h-4" />
+                    <span className="font-bold text-blue-400 text-sm md:text-base">日内中线</span>
                     <span className="text-xs text-slate-400 ml-auto">{signal.mediumTerm.timeframe}</span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">操作:</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">操作:</span>
                       <span className={`font-bold ${
                         signal.mediumTerm.action.includes("做多") ? "text-emerald-400" : 
                         signal.mediumTerm.action.includes("做空") ? "text-red-400" : "text-yellow-400"
@@ -805,31 +822,35 @@ export default function SignalsMonitor() {
                         {signal.mediumTerm.action}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">建议入场:</span>
-                      <span className="text-white">${signal.mediumTerm.entry.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">盈亏比:</span>
+                      <span className="text-purple-400">{signal.mediumTerm.riskReward}:1</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">止损:</span>
-                      <span className="text-red-400">${signal.mediumTerm.stop.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between col-span-2 mt-1">
+                      <span className="text-slate-400">建议入场:</span>
+                      <span className="text-white font-mono text-xs">${formatPrice(signal.mediumTerm.entry)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">目标:</span>
-                      <span className="text-emerald-400">${signal.mediumTerm.target.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">止损:</span>
+                      <span className="text-red-400 font-mono text-xs">${formatPrice(signal.mediumTerm.stop)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">目标:</span>
+                      <span className="text-emerald-400 font-mono text-xs">${formatPrice(signal.mediumTerm.target)}</span>
                     </div>
                   </div>
                 </div>
                 
                 {/* 长线 */}
-                <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 border border-purple-500/30 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Calendar className="text-purple-400 w-5 h-5" />
-                    <span className="font-bold text-purple-400">波段长线</span>
+                <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/10 border border-purple-500/30 rounded-xl p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="text-purple-400 w-4 h-4" />
+                    <span className="font-bold text-purple-400 text-sm md:text-base">波段长线</span>
                     <span className="text-xs text-slate-400 ml-auto">{signal.longTerm.timeframe}</span>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">操作:</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">操作:</span>
                       <span className={`font-bold ${
                         signal.longTerm.action.includes("做多") ? "text-emerald-400" : 
                         signal.longTerm.action.includes("做空") ? "text-red-400" : "text-yellow-400"
@@ -837,17 +858,21 @@ export default function SignalsMonitor() {
                         {signal.longTerm.action}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">建议入场:</span>
-                      <span className="text-white">${signal.longTerm.entry.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">盈亏比:</span>
+                      <span className="text-purple-400">{signal.longTerm.riskReward}:1</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">止损:</span>
-                      <span className="text-red-400">${signal.longTerm.stop.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between col-span-2 mt-1">
+                      <span className="text-slate-400">建议入场:</span>
+                      <span className="text-white font-mono text-xs">${formatPrice(signal.longTerm.entry)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400 text-sm">目标:</span>
-                      <span className="text-emerald-400">${signal.longTerm.target.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">止损:</span>
+                      <span className="text-red-400 font-mono text-xs">${formatPrice(signal.longTerm.stop)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">目标:</span>
+                      <span className="text-emerald-400 font-mono text-xs">${formatPrice(signal.longTerm.target)}</span>
                     </div>
                   </div>
                 </div>
