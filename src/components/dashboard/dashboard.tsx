@@ -1,6 +1,5 @@
 "use client";
 
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -9,13 +8,15 @@ import {
   TrendingUp,
   Shield,
   Zap,
-  DollarSign,
-  AlertTriangle,
   CheckCircle,
   Clock,
   BarChart3,
   Brain,
+  AlertTriangle,
+  DollarSign,
   Database,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
 import {
   AreaChart,
@@ -55,100 +56,111 @@ const marketRegimes = [
   { label: "高波动", count: 9, color: "bg-purple-500" },
 ];
 
+const systemComponents = [
+  { name: "Coze平台", status: "online", desc: "智能编排层" },
+  { name: "云端计算", status: "online", desc: "特征工厂+TFT模型" },
+  { name: "本地执行", status: "online", desc: "五级熔断网关" },
+  { name: "数据源", status: "online", desc: "8个数据源已连接" },
+];
+
+const alerts = [
+  { time: "14:32", level: "warning", msg: "ETH保证金占用上升至78%" },
+  { time: "13:15", level: "info", msg: "新策略通过PB检验准入" },
+  { time: "10:45", level: "success", msg: "BTC-USDT顺势策略盈利+2.3%" },
+  { time: "09:20", level: "info", msg: "HMM识别市场体制: 震荡" },
+];
+
 export function Dashboard() {
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      {/* Header - 移动端优化 */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">系统概览</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">系统概览</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             实时监控量化交易系统运行状态
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="gap-1 text-xs sm:text-sm">
             <CheckCircle className="h-3 w-3 text-green-500" />
-            系统运行中
-          </Badge>
-          <Badge variant="outline" className="gap-1">
-            <Clock className="h-3 w-3" />
-            最后更新: 刚刚
+            <span className="hidden xs:inline">系统运行中</span>
+            <span className="xs:hidden">运行中</span>
           </Badge>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">总收益率</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+      {/* Key Metrics - 移动端单列/双列 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <Card className="col-span-1 sm:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">总收益率</CardTitle>
+            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+12.45%</div>
-            <p className="text-xs text-muted-foreground">
-              本月 · 夏普比率 2.73
+          <CardContent className="p-3 sm:p-4 pt-0 sm:pt-0">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-500">+12.45%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              本月 · 夏普 2.73
             </p>
             <Progress value={72} className="mt-2 h-1" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">最大回撤</CardTitle>
-            <Shield className="h-4 w-4 text-blue-500" />
+        <Card className="col-span-1 sm:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">最大回撤</CardTitle>
+            <Shield className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">-8.32%</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 sm:p-4 pt-0 sm:pt-0">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold">-8.32%</div>
+            <p className="text-xs text-muted-foreground mt-1">
               安全阈值内 (≤15%)
             </p>
             <Progress value={55} className="mt-2 h-1" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">日交易量</CardTitle>
-            <Activity className="h-4 w-4 text-purple-500" />
+        <Card className="col-span-1 sm:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">日交易量</CardTitle>
+            <Activity className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1,284</div>
-            <p className="text-xs text-muted-foreground">
-              胜率 63.5% · 盈亏比 1.82
+          <CardContent className="p-3 sm:p-4 pt-0 sm:pt-0">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold">1,284</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              胜率 63.5%
             </p>
             <Progress value={65} className="mt-2 h-1" />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">风险状态</CardTitle>
-            <Zap className="h-4 w-4 text-amber-500" />
+        <Card className="col-span-1 sm:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">风险状态</CardTitle>
+            <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-amber-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">低风险</div>
-            <p className="text-xs text-muted-foreground">
-              保证金占用 42%
+          <CardContent className="p-3 sm:p-4 pt-0 sm:pt-0">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-500">低风险</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              保证金 42%
             </p>
             <Progress value={42} className="mt-2 h-1" />
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      {/* Charts Row - 移动端堆叠 */}
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-7">
         {/* Performance Chart */}
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+        <Card className="lg:col-span-4">
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
               收益率曲线
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <ResponsiveContainer width="100%" height={200} className="hidden sm:block">
               <AreaChart data={performanceData}>
                 <defs>
                   <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -170,26 +182,39 @@ export function Dashboard() {
                 />
               </AreaChart>
             </ResponsiveContainer>
+            {/* 移动端简化显示 */}
+            <div className="sm:hidden flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div>
+                <div className="text-xs text-muted-foreground">当前净值</div>
+                <div className="text-2xl font-bold">112.45</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-muted-foreground">今日收益</div>
+                <div className="text-xl font-bold text-green-500 flex items-center gap-1">
+                  <ArrowUpRight className="h-4 w-4" /> +2.3%
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         {/* Strategy Distribution */}
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
+        <Card className="lg:col-span-3">
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <Brain className="h-4 w-4 sm:h-5 sm:w-5" />
               策略分布
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
                 <Pie
                   data={strategyDistribution}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={80}
+                  innerRadius={40}
+                  outerRadius={60}
                   paddingAngle={2}
                   dataKey="value"
                 >
@@ -200,15 +225,12 @@ export function Dashboard() {
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            <div className="hidden sm:block grid grid-cols-2 gap-2 mt-2">
               {strategyDistribution.map((item) => (
-                <div key={item.name} className="flex items-center gap-2 text-xs">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-muted-foreground">{item.name}</span>
-                  <span className="ml-auto font-medium">{item.value}%</span>
+                <div key={item.name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-xs">{item.name}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{item.value}%</span>
                 </div>
               ))}
             </div>
@@ -216,106 +238,80 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Status Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Second Row - 移动端堆叠 */}
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Market Regime */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
               市场体制识别
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="space-y-2">
               {marketRegimes.map((regime) => (
-                <div key={regime.label} className="flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-full ${regime.color}`} />
-                  <span className="flex-1 text-sm">{regime.label}</span>
-                  <span className="text-sm font-medium">{regime.count}%</span>
+                <div key={regime.label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${regime.color}`} />
+                    <span className="text-xs sm:text-sm">{regime.label}</span>
+                  </div>
+                  <span className="text-xs sm:text-sm text-muted-foreground">{regime.count}%</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-lg bg-green-500/10 p-3 text-center">
-              <Badge variant="secondary" className="bg-green-500/20 text-green-600">
-                当前: 上涨趋势
-              </Badge>
+            <div className="mt-3 p-2 bg-muted/50 rounded text-xs">
+              <span className="text-muted-foreground">当前体制: </span>
+              <Badge variant="outline" className="ml-1 text-xs">震荡</Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* System Health */}
+        {/* System Status */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              系统健康状态
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <Database className="h-4 w-4 sm:h-5 sm:w-5" />
+              系统组件状态
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm">Coze平台</span>
-              </div>
-              <Badge variant="outline">正常</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm">云端计算</span>
-              </div>
-              <Badge variant="outline">正常</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm">本地执行</span>
-              </div>
-              <Badge variant="outline">正常</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm">数据通道</span>
-              </div>
-              <Badge variant="outline">正常</Badge>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="space-y-2">
+              {systemComponents.map((comp) => (
+                <div key={comp.name} className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs sm:text-sm font-medium">{comp.name}</div>
+                    <div className="text-xs text-muted-foreground hidden sm:block">{comp.desc}</div>
+                  </div>
+                  <Badge variant="outline" className="text-green-500 border-green-500 text-xs">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1" />
+                    在线
+                  </Badge>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         {/* Recent Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
+        <Card className="md:col-span-2 lg:col-span-1">
+          <CardHeader className="p-3 sm:p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5" />
               最近告警
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3 p-2 rounded-lg bg-yellow-500/10">
-              <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">资金费率异常</p>
-                <p className="text-xs text-muted-foreground">BTC资金费率突增</p>
-              </div>
-              <span className="text-xs text-muted-foreground">5分钟前</span>
-            </div>
-            <div className="flex items-start gap-3 p-2 rounded-lg bg-green-500/10">
-              <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">策略切换</p>
-                <p className="text-xs text-muted-foreground">ETH趋势策略激活</p>
-              </div>
-              <span className="text-xs text-muted-foreground">15分钟前</span>
-            </div>
-            <div className="flex items-start gap-3 p-2 rounded-lg bg-blue-500/10">
-              <DollarSign className="h-4 w-4 text-blue-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium">盈利结算</p>
-                <p className="text-xs text-muted-foreground">BTC套利 +0.32%</p>
-              </div>
-              <span className="text-xs text-muted-foreground">1小时前</span>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="space-y-2">
+              {alerts.map((alert, index) => (
+                <div key={index} className="flex items-start gap-2 text-xs sm:text-sm">
+                  <Clock className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-muted-foreground">{alert.time}</div>
+                    <div className="truncate">{alert.msg}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
