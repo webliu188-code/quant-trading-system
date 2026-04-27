@@ -466,8 +466,9 @@ export default function SimulationPanel() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-slate-400 border-b border-slate-700">
+                    <tr className="text-slate-400 border-b border-slate-700 text-xs">
                       <th className="text-left py-2 px-2">币种</th>
+                      <th className="text-left py-2 px-2">开仓时间</th>
                       <th className="text-left py-2 px-2">方向</th>
                       <th className="text-right py-2 px-2">杠杆</th>
                       <th className="text-right py-2 px-2">数量</th>
@@ -479,8 +480,9 @@ export default function SimulationPanel() {
                   </thead>
                   <tbody>
                     {positions.map((pos) => (
-                      <tr key={pos.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                      <tr key={pos.id} className="border-b border-slate-700/50 hover:bg-slate-700/30 text-xs">
                         <td className="py-3 px-2 font-medium">{pos.symbol.replace('USDT', '')}</td>
+                        <td className="py-3 px-2 text-slate-400">{pos.openTime}</td>
                         <td className="py-3 px-2">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             pos.side === '做多' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
