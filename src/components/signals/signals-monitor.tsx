@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,39 +64,50 @@ interface TftSignal {
   confidence: number;
 }
 
-// Generate realistic K-line data
-function generateKlineData(symbol: string, days: number = 30): KLineData[] {
-  const data = [];
-  let basePrice = symbol === "BTCUSDT" ? 65000 : symbol === "ETHUSDT" ? 3500 : 500;
-  const now = Date.now();
-
-  for (let i = 0; i < days * 24; i++) {
-    const time = new Date(now - (days * 24 - i) * 3600000);
-    const volatility = symbol === "BTCUSDT" ? 0.02 : symbol === "ETHUSDT" ? 0.025 : 0.03;
-    const change = (Math.random() - 0.5) * volatility;
-    basePrice = basePrice * (1 + change);
-
-    const open = basePrice;
-    const close = basePrice * (1 + (Math.random() - 0.5) * volatility);
-    const high = Math.max(open, close) * (1 + Math.random() * volatility * 0.5);
-    const low = Math.min(open, close) * (1 - Math.random() * volatility * 0.5);
-    const volume = Math.random() * 1000 + 500;
-
-    data.push({
-      time: time.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-      date: time.toLocaleDateString("zh-CN", { month: "short", day: "numeric" }),
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
-      volume: Number(volume.toFixed(2)),
-    });
-  }
-
-  return data;
+interface MarketData {
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
 }
 
-// Generate signals data
+// 获取真实市场数据
+async function fetchMarketData(): Promise<MarketData[]> {
+  try {
+    const response = await fetch("/api/market/prices");
+    if (response.ok) {
+      const result = await response.json();
+      return result.data;
+    }
+  } catch {
+    console.log("Using mock data");
+  }
+  return [];
+}
+
+// 获取真实K线数据
+async function fetchKlineData(symbol: string, interval: string = "1h"): Promise<KLineData[]> {
+  try {
+    const response = await fetch(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=100`);
+    if (response.ok) {
+      const result = await response.json();
+      return result.data.map((k: { time: string; open: number; high: number; low: number; close: number; volume: number }) => ({
+        time: new Date(k.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        date: new Date(k.time).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }),
+        open: k.open,
+        high: k.high,
+        low: k.low,
+        close: k.close,
+        volume: k.volume,
+      }));
+    }
+  } catch {
+    console.log("Using mock kline data");
+  }
+  return [];
+}
+
+// 生成模拟信号
 function generateSignals(): Signal[] {
   return [
     { id: 1, symbol: "BTCUSDT", strategy: "TFT融合信号", signal: 0.72, direction: "long", confidence: 85, time: "刚刚" },
@@ -110,7 +121,7 @@ function generateSignals(): Signal[] {
   ];
 }
 
-// Generate TFT signals data
+// 生成TFT信号
 function generateTftSignals(): TftSignal[] {
   return [
     { time: "00:00", signal: 0.62, confidence: 78 },
@@ -127,31 +138,85 @@ export function SignalsMonitor() {
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
   const [timeframe, setTimeframe] = useState("1h");
   const [klineData, setKlineData] = useState<KLineData[]>([]);
+  const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [tftSignals, setTftSignals] = useState<TftSignal[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [dataSource, setDataSource] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [klines, markets] = await Promise.all([
+        fetchKlineData(selectedSymbol, timeframe),
+        fetchMarketData(),
+      ]);
+      
+      if (klines.length > 0) {
+        setKlineData(klines);
+      } else {
+        // 使用模拟数据作为后备
+        const mockKlines: KLineData[] = [];
+        const basePrice = selectedSymbol === "BTCUSDT" ? 67000 : selectedSymbol === "ETHUSDT" ? 3500 : 500;
+        const now = Date.now();
+        
+        for (let i = 0; i < 100; i++) {
+          const time = new Date(now - (100 - i) * 3600000);
+          const volatility = selectedSymbol === "BTCUSDT" ? 0.02 : 0.025;
+          const change = (Math.random() - 0.5) * volatility;
+          const price = basePrice * Math.pow(1 + change, i / 10);
+          
+          mockKlines.push({
+            time: time.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            date: time.toLocaleDateString("zh-CN", { month: "short", day: "numeric" }),
+            open: price,
+            high: price * 1.01,
+            low: price * 0.99,
+            close: price * (1 + (Math.random() - 0.5) * 0.01),
+            volume: Math.random() * 1000 + 500,
+          });
+        }
+        setKlineData(mockKlines);
+      }
+      
+      if (markets.length > 0) {
+        setMarketData(markets);
+        setDataSource("binance");
+      } else {
+        setDataSource("mock");
+      }
+      
+      setSignals(generateSignals());
+      setTftSignals(generateTftSignals());
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedSymbol, timeframe]);
 
   useEffect(() => {
-    setKlineData(generateKlineData(selectedSymbol));
-    setSignals(generateSignals());
-    setTftSignals(generateTftSignals());
-    setLastUpdate(new Date());
-  }, [selectedSymbol]);
+    loadData();
+  }, [loadData]);
 
+  // 每30秒自动刷新
   useEffect(() => {
     const interval = setInterval(() => {
-      setKlineData(generateKlineData(selectedSymbol));
-      setSignals(generateSignals());
-      setLastUpdate(new Date());
-    }, 5000);
+      loadData();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [selectedSymbol]);
+  }, [loadData]);
 
   const currentPrice = klineData.length > 0 ? klineData[klineData.length - 1].close : 0;
   const prevPrice = klineData.length > 1 ? klineData[klineData.length - 2].close : 0;
   const priceChange = currentPrice - prevPrice;
   const priceChangePercent = prevPrice > 0 ? ((priceChange / prevPrice) * 100).toFixed(2) : "0";
   const isUp = priceChange >= 0;
+
+  // 找到当前币种的实时数据
+  const currentMarket = marketData.find(m => m.symbol === selectedSymbol.replace("USDT", ""));
 
   return (
     <div className="p-6 space-y-6">
@@ -165,11 +230,16 @@ export function SignalsMonitor() {
         </div>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="gap-1">
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
             {lastUpdate.toLocaleTimeString()}
           </Badge>
-          <Button size="sm" variant="outline">
-            <Zap className="h-4 w-4 mr-2" />
+          <Badge variant="outline" className={cn(
+            dataSource === "binance" ? "text-green-600 border-green-500" : "text-yellow-600 border-yellow-500"
+          )}>
+            {dataSource === "binance" ? "Binance 实时" : "模拟数据"}
+          </Badge>
+          <Button size="sm" variant="outline" onClick={loadData} disabled={isLoading}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
             刷新数据
           </Button>
         </div>
@@ -195,12 +265,17 @@ export function SignalsMonitor() {
 
               <div>
                 <div className="text-3xl font-bold">
-                  ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ${(currentMarket?.price || currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
-                <div className={cn("flex items-center gap-2 text-sm", isUp ? "text-green-500" : "text-red-500")}>
+                <div className={cn("flex items-center gap-2 text-sm", (currentMarket?.change24h || 0) >= 0 ? "text-green-500" : "text-red-500")}>
                   {isUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-                  <span>{isUp ? "+" : ""}{priceChange.toFixed(2)}</span>
-                  <span>({isUp ? "+" : ""}{priceChangePercent}%)</span>
+                  <span>
+                    {currentMarket?.change24h 
+                      ? `${(currentMarket.change24h) >= 0 ? "+" : ""}${currentMarket.change24h.toFixed(2)}%`
+                      : `${isUp ? "+" : ""}${priceChangePercent}%`
+                    }
+                  </span>
+                  {currentMarket && <span className="text-muted-foreground">24h</span>}
                 </div>
               </div>
             </div>
@@ -228,6 +303,11 @@ export function SignalsMonitor() {
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
               {selectedSymbol} K线
+              {dataSource === "binance" && (
+                <Badge variant="outline" className="ml-2 text-green-600 border-green-500">
+                  实时
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
