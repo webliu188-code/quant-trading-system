@@ -41,7 +41,7 @@ export function Dashboard() {
         const priceList: MarketPrice[] = data.data.map((item: any) => ({
           symbol: item.symbol,
           price: parseFloat(item.price),
-          changePercent: parseFloat(item.changePercent),
+          changePercent: parseFloat(item.change24h || item.changePercent || 0),
         }));
         setPrices(priceList);
         setLastUpdate(new Date().toLocaleTimeString("zh-CN"));

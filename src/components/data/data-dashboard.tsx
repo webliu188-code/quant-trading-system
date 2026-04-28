@@ -152,12 +152,12 @@ export function DataDashboard() {
     try {
       const res = await fetch("/api/market/prices");
       const data = await res.json();
-      if (data.source === "binance" && data.data) {
+      if ((data.source === "binance" || data.source === "getadex") && data.data) {
         const prices: Record<string, { price: number; change: number }> = {};
         data.data.forEach((item: any) => {
           prices[item.symbol] = {
             price: parseFloat(item.price),
-            change: parseFloat(item.changePercent)
+            change: parseFloat(item.change24h || item.changePercent || 0)
           };
         });
         setMarketPrices(prices);
