@@ -492,11 +492,11 @@ export default function SimulationPanel() {
                         </td>
                         <td className="py-3 px-2 text-right text-blue-400">{pos.leverage}x</td>
                         <td className="py-3 px-2 text-right">{pos.quantity}</td>
-                        <td className="py-3 px-2 text-right">${pos.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="py-3 px-2 text-right">${pos.entryPrice.toFixed(4)}</td>
                         <td className="py-3 px-2 text-right font-medium">
-                          ${pos.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${pos.currentPrice.toFixed(4)}
                           <div className="text-xs text-slate-400">
-                            ${(marketData.find(m => m.symbol === pos.symbol)?.price || 0).toLocaleString()}
+                            ${(marketData.find(m => m.symbol === pos.symbol)?.price || 0).toFixed(4)}
                           </div>
                         </td>
                         <td className={`py-3 px-2 text-right font-bold ${pos.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -504,8 +504,8 @@ export default function SimulationPanel() {
                           <div className="text-xs">{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</div>
                         </td>
                         <td className="py-3 px-2 text-right text-xs">
-                          <div className="text-red-400">${pos.stopLoss.toFixed(2)}</div>
-                          <div className="text-emerald-400">${pos.takeProfit.toFixed(2)}</div>
+                          <div className="text-red-400">${pos.stopLoss.toFixed(4)}</div>
+                          <div className="text-emerald-400">${pos.takeProfit.toFixed(4)}</div>
                         </td>
                       </tr>
                     ))}
@@ -556,11 +556,11 @@ export default function SimulationPanel() {
                         </span>
                       </td>
                       <td className="py-2 px-2 text-right text-emerald-400">
-                        ${(trade.entryPrice || trade.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ${(trade.entryPrice || trade.price).toFixed(4)}
                       </td>
                       <td className="py-2 px-2 text-right text-orange-400">
                         {trade.action === '平仓' ? (
-                          <>${trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                          <>${trade.price.toFixed(4)}</>
                         ) : (
                           <span className="text-slate-500">—</span>
                         )}

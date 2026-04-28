@@ -16,17 +16,11 @@ import {
 const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
 const intervals = ["1m", "5m", "15m", "1h", "4h", "1d"];
 
-// 价格格式化函数
+// 价格格式化函数 - 保持API原始精度
 function formatPrice(price: number): string {
-  if (price >= 10000) {
-    return price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  } else if (price >= 100) {
-    return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  } else if (price >= 1) {
-    return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-  } else {
-    return price.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
-  }
+  // 使用toFixed保留最多4位小数，去掉尾部多余的0
+  const formatted = price.toFixed(4);
+  return parseFloat(formatted).toString();
 }
 
 interface KLineData {

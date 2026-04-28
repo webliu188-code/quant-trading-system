@@ -350,7 +350,7 @@ export function DataDashboard() {
                 {marketData.map((market) => (
                   <TableRow key={market.symbol}>
                     <TableCell className="font-medium">{market.symbol}</TableCell>
-                    <TableCell>${market.price.toLocaleString()}</TableCell>
+                    <TableCell>${market.price.toFixed(4)}</TableCell>
                     <TableCell>
                       <span className={market.change >= 0 ? "text-green-600" : "text-red-600"}>
                         {market.change >= 0 ? "+" : ""}{market.change.toFixed(2)}%
