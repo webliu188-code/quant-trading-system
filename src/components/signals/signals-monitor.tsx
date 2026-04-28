@@ -95,24 +95,18 @@ async function fetchKlineData(symbol: string, interval: string = "1h"): Promise<
     const response = await fetch(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=100`);
     if (response.ok) {
       const result = await response.json();
-      const klines = result.data.map((k: { time: string; open: number; high: number; low: number; close: number; volume: number }) => ({
-        time: new Date(k.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      return result.data.map((k: { time: string; open: number; high: number; low: number; close: number; volume: number }) => ({
+        time: k.time,
         date: new Date(k.time).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }),
         open: k.open,
         high: k.high,
         low: k.low,
         close: k.close,
         volume: k.volume,
+        ma7: k.close,
+        ma25: k.close,
+        ma99: k.close,
       }));
-      
-      // 计算 MA 均线
-      const closes = klines.map((k: KLineData) => k.close);
-      return klines.map((k: KLineData, i: number) => {
-        const ma7 = i >= 6 ? closes.slice(Math.max(0, i - 6), i + 1).reduce((a: number, b: number) => a + b, 0) / 7 : k.close;
-        const ma25 = i >= 24 ? closes.slice(Math.max(0, i - 24), i + 1).reduce((a: number, b: number) => a + b, 0) / 25 : k.close;
-        const ma99 = i >= 98 ? closes.slice(Math.max(0, i - 98), i + 1).reduce((a: number, b: number) => a + b, 0) / 99 : k.close;
-        return { ...k, ma7, ma25, ma99 };
-      });
     }
   } catch {
     console.log("Using mock kline data");

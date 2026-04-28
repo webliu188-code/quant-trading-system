@@ -1,8 +1,44 @@
 import { NextResponse } from "next/server";
 
+const GETADEX_API_KEY = "792d26358c6657a9ca36b3815252e020";
+const GETADEX_API_BASE = "https://api.getadex.io/api/v1";
+
 export async function GET() {
+  // 尝试 Getadex API
   try {
-    // 获取多个币种数据
+    const response = await fetch(
+      `${GETADEX_API_BASE}/market/prices`,
+      {
+        headers: {
+          "X-API-KEY": GETADEX_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.data && Array.isArray(data.data)) {
+        return NextResponse.json({
+          success: true,
+          source: "getadex",
+          data: data.data.map((item: { symbol: string; price: number; change?: number; volume?: number }) => ({
+            symbol: item.symbol.replace(/USDT|USD|-USDT/g, ""),
+            price: parseFloat(String(item.price)),
+            change24h: parseFloat(String(item.change || 0)),
+            volume24h: parseFloat(String(item.volume || 0)),
+          })),
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Getadex prices API error:", error);
+  }
+
+  // 回退到 Binance
+  try {
     const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
     const results = [];
 
@@ -22,11 +58,10 @@ export async function GET() {
           });
         }
       } catch {
-        // 静默处理单个币种错误
+        // 静默处理
       }
     }
 
-    // 如果获取到真实数据，返回
     if (results.length > 0) {
       return NextResponse.json({
         success: true,
@@ -36,10 +71,10 @@ export async function GET() {
       });
     }
   } catch {
-    // 继续使用模拟数据
+    console.error("Binance API error");
   }
 
-  // 模拟数据后备
+  // 最后回退到模拟数据
   return NextResponse.json({
     success: true,
     source: "mock",
