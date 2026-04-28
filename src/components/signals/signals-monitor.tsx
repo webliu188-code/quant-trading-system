@@ -2,16 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Activity, Zap, Brain, RefreshCw, TrendingUp, TrendingDown, AlertCircle, Lightbulb, Shield, ArrowUpRight, ArrowDownRight, Clock, Timer, Calendar, Target } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
+import OKXKlineChart from "./okx-kline-chart";
 
 const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
 const intervals = ["1m", "5m", "15m", "1h", "4h", "1d"];
@@ -31,6 +22,9 @@ interface KLineData {
   low: number;
   close: number;
   volume: number;
+  ma7: number;
+  ma25: number;
+  ma99: number;
 }
 
 interface Signal {
@@ -56,6 +50,7 @@ interface Signal {
     stop: number;
     target: number;
     timeframe: string;
+    riskReward?: number;
   };
   mediumTerm: {
     action: string;
@@ -63,6 +58,7 @@ interface Signal {
     stop: number;
     target: number;
     timeframe: string;
+    riskReward?: number;
   };
   longTerm: {
     action: string;
@@ -70,6 +66,7 @@ interface Signal {
     stop: number;
     target: number;
     timeframe: string;
+    riskReward?: number;
   };
 }
 
@@ -98,7 +95,7 @@ async function fetchKlineData(symbol: string, interval: string = "1h"): Promise<
     const response = await fetch(`/api/market/klines?symbol=${symbol}&interval=${interval}&limit=100`);
     if (response.ok) {
       const result = await response.json();
-      return result.data.map((k: { time: string; open: number; high: number; low: number; close: number; volume: number }) => ({
+      const klines = result.data.map((k: { time: string; open: number; high: number; low: number; close: number; volume: number }) => ({
         time: new Date(k.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         date: new Date(k.time).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }),
         open: k.open,
@@ -107,6 +104,15 @@ async function fetchKlineData(symbol: string, interval: string = "1h"): Promise<
         close: k.close,
         volume: k.volume,
       }));
+      
+      // 计算 MA 均线
+      const closes = klines.map((k: KLineData) => k.close);
+      return klines.map((k: KLineData, i: number) => {
+        const ma7 = i >= 6 ? closes.slice(Math.max(0, i - 6), i + 1).reduce((a: number, b: number) => a + b, 0) / 7 : k.close;
+        const ma25 = i >= 24 ? closes.slice(Math.max(0, i - 24), i + 1).reduce((a: number, b: number) => a + b, 0) / 25 : k.close;
+        const ma99 = i >= 98 ? closes.slice(Math.max(0, i - 98), i + 1).reduce((a: number, b: number) => a + b, 0) / 99 : k.close;
+        return { ...k, ma7, ma25, ma99 };
+      });
     }
   } catch {
     console.log("Using mock kline data");
@@ -686,35 +692,8 @@ export default function SignalsMonitor() {
                 </div>
               </div>
             )}
-            <div className="h-80">
-              {klineData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={klineData}>
-                    <defs>
-                      <linearGradient id="colorClose" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={currentMarket && currentMarket.change24h >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0.3} />
-                        <stop offset="95%" stopColor={currentMarket && currentMarket.change24h >= 0 ? "#10b981" : "#ef4444"} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} />
-                    <YAxis stroke="#94a3b8" fontSize={10} domain={["auto", "auto"]} />
-                    <Tooltip contentStyle={{ backgroundColor: "#1e293b", border: "none", borderRadius: "8px" }} labelStyle={{ color: "#94a3b8" }} />
-                    {signal && (
-                      <>
-                        <ReferenceLine y={signal.support} stroke="#10b981" strokeDasharray="3 3" label={{ value: "支撑", fill: "#10b981", fontSize: 10 }} />
-                        <ReferenceLine y={signal.resistance} stroke="#ef4444" strokeDasharray="3 3" label={{ value: "压力", fill: "#ef4444", fontSize: 10 }} />
-                      </>
-                    )}
-                    <Area type="monotone" dataKey="close" stroke={currentMarket && currentMarket.change24h >= 0 ? "#10b981" : "#ef4444"} fill="url(#colorClose)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500">
-                  {isLoading ? "加载中..." : "暂无数据"}
-                </div>
-              )}
-            </div>
+            {/* OKX风格K线图 */}
+            <OKXKlineChart data={klineData} />
           </div>
 
           {/* 信号详情 */}

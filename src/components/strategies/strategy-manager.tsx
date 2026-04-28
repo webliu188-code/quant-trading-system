@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 interface Strategy {
   id: string;
   name: string;
-  type: "arbitrage" | "trend" | "momentum" | "volatility" | "market-making" | "multi-factor";
+  type: "arbitrage" | "trend" | "momentum" | "volatility" | "market-making" | "multi-factor" | "classic" | "institutional";
   leverage: "low" | "medium" | "high";
   leverageRange: string;
   signal: number;
