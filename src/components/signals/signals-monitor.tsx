@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Activity, Zap, Brain, RefreshCw, TrendingUp, TrendingDown, AlertCircle, Lightbulb, Shield, ArrowUpRight, ArrowDownRight, Clock, Timer, Calendar, Target } from "lucide-react";
-import OKXKlineChart from "./okx-kline-chart";
+import OKXKlineChart from "./trading-chart";
 
 const symbols = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT"];
 const intervals = ["1m", "5m", "15m", "1h", "4h", "1d"];
