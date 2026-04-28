@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,13 +131,6 @@ const dataSources = [
   },
 ];
 
-const marketData = [
-  { symbol: "BTC", price: 65234.56, change: 2.34, volume: 28500000000, fundingRate: 0.012 },
-  { symbol: "ETH", price: 3489.12, change: 1.87, volume: 15200000000, fundingRate: 0.008 },
-  { symbol: "BNB", price: 578.45, change: -0.52, volume: 1850000000, fundingRate: 0.005 },
-  { symbol: "SOL", price: 142.87, change: 5.23, volume: 4200000000, fundingRate: 0.025 },
-  { symbol: "XRP", price: 0.5234, change: -1.12, volume: 2100000000, fundingRate: -0.008 },
-];
 
 const indicators = [
   { name: "BTC MVRV", value: 2.45, signal: "normal", description: "Market Value to Realized Value" },
@@ -148,6 +142,52 @@ const indicators = [
 ];
 
 export function DataDashboard() {
+  // 实时市场数据状态
+  const [marketPrices, setMarketPrices] = useState<Record<string, { price: number; change: number }>>({});
+  const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 获取实时价格
+  const fetchMarketPrices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/market/prices");
+      const data = await res.json();
+      if (data.source === "binance" && data.data) {
+        const prices: Record<string, { price: number; change: number }> = {};
+        data.data.forEach((item: any) => {
+          prices[item.symbol] = {
+            price: parseFloat(item.price),
+            change: parseFloat(item.changePercent)
+          };
+        });
+        setMarketPrices(prices);
+        setLastUpdate(new Date().toLocaleTimeString("zh-CN"));
+      }
+    } catch (error) {
+      console.error("获取市场数据失败:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMarketPrices();
+    const interval = setInterval(fetchMarketPrices, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMarketPrices]);
+
+  // 基于真实价格生成市场数据
+  const getMarketData = () => {
+    const prices = marketPrices && Object.keys(marketPrices).length > 0 ? marketPrices : null;
+    return [
+      { symbol: "BTC", price: prices?.BTC?.price || 0, change: prices?.BTC?.change || 0, volume: 28500000000, fundingRate: 0.012 },
+      { symbol: "ETH", price: prices?.ETH?.price || 0, change: prices?.ETH?.change || 0, volume: 15200000000, fundingRate: 0.008 },
+      { symbol: "BNB", price: prices?.BNB?.price || 0, change: prices?.BNB?.change || 0, volume: 1850000000, fundingRate: 0.005 },
+      { symbol: "SOL", price: prices?.SOL?.price || 0, change: prices?.SOL?.change || 0, volume: 4200000000, fundingRate: 0.025 },
+    ];
+  };
+
+  const marketData = getMarketData();
   const connectedCount = dataSources.filter((d) => d.status === "connected").length;
   const totalQuota = dataSources.reduce((sum, d) => sum + d.quota.total, 0);
   const usedQuota = dataSources.reduce((sum, d) => sum + d.quota.used, 0);
